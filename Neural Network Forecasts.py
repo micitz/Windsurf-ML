@@ -397,7 +397,6 @@ def main():
     # Cut off the environmental forcings to match the length
     # of the morphometrics and horizontally concatenate the 
     # two DataFrames
-    # env_df = env_df.iloc[morpho_df.index]
     df = pd.concat([env_df.iloc[morpho_df.index], morpho_df], axis=1)
     
     # Make "difference" columns for key metrics
@@ -443,21 +442,6 @@ def main():
     # Plot the predictions
     forecast_plot(y_pred, y_ws, profile, metric, fmetric, ylabel, y_err,
                   ylim=fig_lim, save=save_fig)
-    
-    # Make synthetic forcing data from the measured data
-    years = 1
-    hours_per_year = 24 * 365
-    n_hours = years * hours_per_year
-    syn_env_df = pd.DataFrame()
-    for col in ['Hs', 'Tp', 'WD', 'Tide', 'WindDir', 'WindSpeed']:
-        syn_env_df[col] = random.choices(env_df[col].values, k=n_hours)
-        syn_env_df[f'Delta {col}'] = syn_env_df[col].diff().fillna(0)
-    y_wis = make_predictions(model, syn_env_df, x_cols, xscaler, yscaler, time_steps)
-    y_wis = np.nancumsum(y_wis) + df[metric].iloc[0]
-    
-    fig, ax = plt.subplots(dpi=dpi)
-    ax.plot(y_wis)
-    plt.show()
     
     
 if __name__ == '__main__':
