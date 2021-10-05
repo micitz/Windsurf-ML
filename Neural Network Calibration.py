@@ -25,6 +25,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import random
+import time
 import os
 
 # General settings
@@ -57,7 +58,7 @@ def make_params(p):
     # Set paths to the tables
     DATA_DIR = os.path.join('..', 'Text Files')
     single_calibration_fname = os.path.join(DATA_DIR, f'Calibration Parameters (Profile {p}).csv')
-    ga_calibration_fname = os.path.join(DATA_DIR, 'All Genetic Algorithm Parameters.csv')
+    ga_calibration_fname = os.path.join(DATA_DIR, 'Master Genetic Algorithm Parameters List.csv')
 
     # Load the tables
     single_df = pd.read_csv(single_calibration_fname, delimiter=',', header=0)
@@ -175,7 +176,7 @@ def ga_loss_plot(log, min_val, profile, save=False):
     ax.grid(color='lightgrey', linewidth=0.5, zorder=0)
     
     # Add a horizontal line with the best value
-    ax.axhline(y=min_val, color='red', linewidth=2, linestyle='--', zorder=8, label='Best')
+    # ax.axhline(y=min_val, color='red', linewidth=2, linestyle='--', zorder=8, label='Best')
     
     # Plot the loss function
     ax.fill_between(x=gen, y1=hi, y2=lo, facecolor='blue', alpha=0.5, zorder=2, label='Std. Dev.')
@@ -646,11 +647,15 @@ def train_nn(df, bounds, rmse_cut, drop_rate, n_epoch, n_batch):
     model = keras.Sequential([
         layers.Dense(8, input_shape=(8, ), activation='relu'),
         layers.Dropout(drop_rate),
-        layers.Dense(64, activation='relu'),
+        layers.Dense(128, activation='relu'),
         layers.Dropout(drop_rate),
-        layers.Dense(64, activation='relu'),
+        layers.Dense(128, activation='relu'),
         layers.Dropout(drop_rate),
-        layers.Dense(64, activation='relu'),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(drop_rate),
+        layers.Dense(128, activation='relu'),
+        layers.Dropout(drop_rate),
+        layers.Dense(128, activation='relu'),
         layers.Dropout(drop_rate),
         layers.Dense(1)
     ])
@@ -698,11 +703,14 @@ def main():
     Run the calibration
     """
     
+    # Start a timer
+    start_time = time.time()
+    
     # Set the profile to analyze
-    profile = 15
+    profile = 22
 
     # Set values for the Neural Network
-    n_epoch = 100   # Should be good at 100
+    n_epoch = 200   # Should be good at 100
     n_batch = 100
     drop_rate = 0.10
     rmse_cut = 2
@@ -784,6 +792,10 @@ def main():
         
         # Print out the best parameterizations
         print_ga_best(hof, model, profile)
+        
+    # Print the elapsed time to the console
+    end_time = time.time()
+    print(f'--- {end_time - start_time} seconds ---')
 
 
 if __name__ == '__main__':

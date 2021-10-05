@@ -78,7 +78,7 @@ def adjusts(p, tf=2017):
         field_tf_adjust = 21
         tail = 50
         fence = None
-        right = 120
+        right = 100
         top = 7
     elif p == 1 and (tf == 2019):
         field_tf_adjust = 0
@@ -751,8 +751,6 @@ class WindsurfGAResult():
 
         # Setup the figure
         fig, ax = plt.subplots(dpi=dpi, figsize=(inches, inches))
-        values = ['RMSE', 'Dune RMSE', 'Beach RMSE']
-        df = self.summary.melt(value_vars=values, id_vars='Generation')
 
         # Add a line for the NN RMSE
         if nn_rmse is not None:
@@ -760,12 +758,12 @@ class WindsurfGAResult():
 
         # Plot the data
         sns.boxplot(x='Generation',
-                    y='value',
-                    hue='variable',
-                    hue_order=values,
-                    palette=['#1b9e77', '#d95f02', '#7570b3'],
-                    data=df,
+                    y='RMSE',
+                    color='white',
+                    data=self.summary,
                     ax=ax)
+        plt.setp(ax.artists, edgecolor='k', facecolor='w')
+        plt.setp(ax.lines, color='k')
 
         # Set a legend
         ax.legend(loc='upper right', title=None, fancybox=False, edgecolor='black', fontsize='x-small')
@@ -887,8 +885,20 @@ class WindsurfGAResult():
             # Plot the data
             ax.errorbar(x=self.ngen, y=means, yerr=sds, fmt='o', ecolor='darkgrey', elinewidth=2, zorder=4)
             ax.plot(self.ngen, means, color='black', linewidth=0.5, zorder=6)
-            plot = ax.scatter(x=self.ngen, y=means, c=scores, cmap='viridis_r', edgecolors='black', linewidths=0.5,
+            plot = ax.scatter(x=self.ngen, y=means, s=1, c=scores, cmap='viridis_r', edgecolors='black', linewidths=0.5,
                               vmin=0, vmax=1, zorder=8)
+            sns.stripplot(x=self.summary['Generation'],
+                          y=self.summary[col],
+                          hue=self.summary['RMSE'],
+                          palette='viridis_r',
+                          edgecolor='black',
+                          linewidth=0.5,
+                          vmin=0, vmax=1,
+                          zorder=10,
+                          ax=ax)
+
+        for ax in axes:
+            ax.legend([], [], frameon=False)
 
         # Setup the colorbar axis and add the bar
         fig.subplots_adjust(right=0.9)

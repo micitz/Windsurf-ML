@@ -376,7 +376,7 @@ def main():
     group = True
 
     # Load the results
-    new = False
+    new = True
     bgb1 = load_windsurf_result(p=1, t0=2016, tf=2017, new=new)
     bgb3 = load_windsurf_result(p=3, t0=2016, tf=2017, new=new)
     bgb15 = load_windsurf_result(p=15, t0=2016, tf=2017, new=new)
