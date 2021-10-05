@@ -211,13 +211,9 @@ def forecast_plot(y_pred, y_ws, p, metric, fmetric, ylab, yerr=None,
     ax.grid(color='lightgrey', linewidth=0.5, zorder=0)
     
     # Plot the LSTM predictions
-    ax.plot(times, y_pred, color='black', label='LSTM Prediction', zorder=2)
-    if lo is not None:
-        ax.plot(times, lo, color='black', linestyle='--', label='LSTM Prediction (Low SLR)', zorder=2)
-    if mid is not None:
-        ax.plot(times, mid, color='black', linestyle=':', label='LSTM Prediction (Mid SLR)', zorder=2)
-    if hi is not None:
-        ax.plot(times, hi, color='black', linestyle='-.', label='LSTM Prediction (High SLR)', zorder=2)
+    ax.plot(times, y_pred, color='black', label='LSTM Prediction', zorder=4)
+    if lo is not None and hi is not None:
+        ax.fill_between(x=times, y1=hi, y2=lo, facecolor='lightgrey', label='Std.', zorder=2)
     
     # Plot the Windsurf prediction
     ax.plot(times[:len(y_ws)], y_ws, color='red', label='Windsurf', zorder=20)
@@ -234,7 +230,10 @@ def forecast_plot(y_pred, y_ws, p, metric, fmetric, ylab, yerr=None,
                 zorder=6)
     
     # Add a legend
-    ax.legend(loc='upper left', fancybox=False, edgecolor='black')
+    if 'Toe' in fmetric:
+        ax.legend(loc='lower left', fancybox=False, edgecolor='black')
+    else:
+        ax.legend(loc='upper left', fancybox=False, edgecolor='black')
     
     # Set the X-Axis
     fmt = DateFormatter('%b-%Y')
@@ -377,12 +376,12 @@ def main():
     time_steps = 48
     epochs = 25
     batch_size = 5000
-    metric = 'Y Crest'
-    fmetric = 'yCrest'
+    metric = 'Y Toe'
+    fmetric = 'yToe'
     new_lstm = False
-    ylabel = 'D$_{high}$ (m NAVD88)'
-    y_err = 0.08
-    fig_lim = (5, 6.5)
+    ylabel = 'D$_{low}$ (m NAVD88)'
+    y_err = 0.02
+    fig_lim = (2.0, 2.50)
     save_fig = True
     
     
@@ -430,18 +429,50 @@ def main():
     model = make_model(X_scaled, y_scaled, metric, profile,
                        epochs, batch_size, new=new_lstm)
     
-    # Predict the Y-values the full time span
+    # Predict the Y-values the full time span in a loop to generate
+    # a mean and deviation of the predictions instead of a single value
+    pred_df = pd.DataFrame()
+    for ii in range(10):
+        
+        # Add random noise to the forcing data
+        eps = 0.05
+        noise = np.random.normal(loc=0.0, scale=1.0, size=env_df.shape) * eps
+        noise_df = pd.DataFrame(noise, columns=env_df.columns)
+        noise_df = noise_df.add(env_df, fill_value=0)
+        for col in noise_df.columns:
+            if 'Delta' in col:
+                pass
+            else:
+                noise_df[f'Delta {col}'] = noise_df[col].diff().fillna(0)
+                
+        pred_vals = make_predictions(model, noise_df, x_cols, xscaler, yscaler, time_steps)
+        pred_df[f'{ii}'] = pred_vals.ravel().tolist()
+        
     y_pred = make_predictions(model, env_df, x_cols, xscaler, yscaler, time_steps)
+       
+    # Calculate the mean and standard deviations of the predictions
+    pred_cols = pred_df.columns
+    pred_df['Mean'] = pred_df.mean(axis=1)
+    pred_df['Std'] = pred_df[pred_cols].std(axis=1)
+    pred_df['Lo'] = pred_df['Mean'] - pred_df['Std']
+    pred_df['Hi'] = pred_df['Mean'] + pred_df['Std']
+    pred_df['2 Lo'] = pred_df['Mean'] - (2 * pred_df['Std'])
+    pred_df['2 Hi'] = pred_df['Mean'] + (2 * pred_df['Std'])
+        
+    # print(pred_df)
     
     # The neural network returns the change in values
     # so take a cumulative sum and add the initial value
     # to convert it back to the proper values
+    mid_pred = np.nancumsum(pred_df['Mean'].values) + df[metric].iloc[0]
+    lo_pred = np.nancumsum(pred_df['Lo'].values) + df[metric].iloc[0]
+    hi_pred = np.nancumsum(pred_df['Hi'].values) + df[metric].iloc[0]
     y_pred = np.nancumsum(y_pred) + df[metric].iloc[0]
     y_ws = np.nancumsum(y) + df[metric].iloc[0]
     
     # Plot the predictions
     forecast_plot(y_pred, y_ws, profile, metric, fmetric, ylabel, y_err,
-                  ylim=fig_lim, save=save_fig)
+                  lo=lo_pred, mid=mid_pred, hi=hi_pred, ylim=fig_lim, save=save_fig)
     
     
 if __name__ == '__main__':
