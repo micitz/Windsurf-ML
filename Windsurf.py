@@ -66,6 +66,34 @@ def adjusts(p, tf=2017):
     }
 
 
+def bss(df, dec=3, mask=None, column='Model Final'):
+    """
+    Calculate the BSS for the model run
+
+    df: DataFrame with the gridded profiles in it
+    dec: Number of decimals to round to (Default = 3)
+    mask: Int with the values to use to mask out the profile
+    """
+
+    # Mask out values
+    if mask is None:
+        pass
+    else:
+        df = df.loc[df['Mask'] == mask]
+
+    # Get the profiles
+    z0 = df['Field Final']
+    zm = df[column]
+    zb = df['Field Init']
+
+    # Calculate the BSS
+    numerator = np.nansum(np.abs(z0 - zm)**2)
+    denominator = np.nansum(np.abs(z0 - zb)**2)
+    bss = 1 - (numerator / denominator)
+
+    return bss
+
+
 def copytree(src, dst, symlinks=False, ignore=None):
     """
     https://stackoverflow.com/a/12514470
@@ -332,15 +360,19 @@ class Windsurf:
         dune_rmse = rmse(df.loc[df['Mask'] == 1], dec=dec)
         beach_rmse = rmse(df.loc[df['Mask'] == 2], dec=dec)
 
+        # Calculate the BSS
+        full_bss = bss(df, dec=dec)
+
         # Set a penalty for NaN values
         if np.isnan(full_rmse):
             full_rmse = 1000.0
+            full_bss = -1000.0
         if np.isnan(dune_rmse):
             dune_rmse = 1000.0
         if np.isnan(beach_rmse):
             beach_rmse = 1000.0
 
-        return full_rmse, dune_rmse, beach_rmse
+        return full_rmse, full_bss
 
     def print_params(self, decimals=4):
         """

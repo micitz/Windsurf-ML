@@ -25,7 +25,7 @@ def windsurf_func(individual):
 
     test = True
     if test:
-        ws_score_full, ws_score_dune, ws_score_beach = random.random(), random.random(), random.random()
+        ws_score_rmse, ws_score_dune, ws_score_beach = random.random(), random.random(), random.random()
         print(individual)
     else:
 
@@ -56,7 +56,7 @@ def windsurf_func(individual):
 
         # Run the model and calculate the RMSE
         ws.run_windsurf()
-        ws_score_full, ws_score_dune, ws_score_beach = ws.evaluate_sim(dec=None)
+        ws_score_rmse, ws_score_bss = ws.evaluate_sim(dec=None)
 
         # If the ws_score is a Nan then the model didn't complete,
         # this indicates the parameterization is particularly wrong
@@ -64,7 +64,7 @@ def windsurf_func(individual):
         # if np.isnan(ws_score):
         #     ws_score = 1000.0
 
-    return (ws_score_full, ws_score_dune, ws_score_beach,)
+    return (ws_score_rmse, ws_score_dune, ws_score_beach,)
 
 
 """
@@ -122,7 +122,7 @@ Setup the algorithm
 # Load in the values from the neural network and set the
 # percentage to mulitply the values by for seeding the
 # first generation
-pct = 0.05
+pct = 0.20
 nn_fname = 'BGB15 Best ML Parameters.csv'
 nn_df = pd.read_csv(nn_fname, delimiter=',', header=0)
 nn_means = nn_df.mean(axis=0)
@@ -133,7 +133,7 @@ means_df['Hi'] = means_df['Mean'] * (1 + pct)
 
 # Set parameters for the algorithm
 pop_size = 10
-num_gen = 10
+num_gen = 2
 n_genes = 8
 
 # Set upper and lower bounds for the parameters. This is
@@ -143,7 +143,7 @@ hi = [5.00, 3.00, 1.00, 1.00, 0.10, 0.50, 1.00, 10.00]
 
 # Setup the individuals. The goal is to minimize the RMSE score, so
 # set the weight equal to -1. The individual will use a list of genes
-creator.create('FitnessMulti', base.Fitness, weights=(-1.0, -1.0, -1.0))
+creator.create('FitnessMulti', base.Fitness, weights=(-1.0, -1.0, -1.0,))
 creator.create('Individual', list, fitness=creator.FitnessMulti)
 
 # Register the individuals and population
@@ -171,7 +171,7 @@ toolbox.register('mutate', tools.mutGaussian, mu=0, sigma=1, indpb=0.2)
 toolbox.decorate("mutate", checkBounds(low, hi))
 
 # Setup parameter selection and evaluation
-toolbox.register('select', tools.selTournament, tournsize=3)
+toolbox.register('select', tools.selNSGA3WithMemory)
 toolbox.register('evaluate', windsurf_func)
 
 
